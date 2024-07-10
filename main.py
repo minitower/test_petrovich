@@ -84,6 +84,6 @@ class FileDownloader():
             self.remove(file_name)
             
             
-fd = FileDownloader(url_arr)
-fd.download()
-    
+if __name__ == '__main__':
+    fd = FileDownloader(url_arr)
+    fd.download()
