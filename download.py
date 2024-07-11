@@ -19,6 +19,8 @@ class FileDownloader():
         os.makedirs(self.csv_path, exist_ok=True)
         self.parquet_path = './data/parquet'
         os.makedirs(self.parquet_path, exist_ok=True)
+        os.makedirs('./data/parquet/25', exist_ok=True)
+        os.makedirs('./data/parquet/26', exist_ok=True)
         
     def preprocess(self, file_name:str):
         """
