@@ -26,6 +26,26 @@ class TablePreprocess():
         return ['./data/parquet/'+url.split('/')[-1].split('.')[0]+'.parquet' 
                 for url in url_arr]
         
+    def concatDataFrames(self):
+        """
+        Function for concat data frames with each other
+        by date parameter
+        """
+        df_arr_25 = []
+        df_arr_26 = []
+        for file_name in self.file_arr:
+            if file_name.find('2024-06-25')!=-1:
+                df = pd.read_parquet(file_name)
+                df_arr_25.append(df)
+            elif file_name.find('2024-06-26')!=-1:
+                df = pd.read_parquet(file_name)
+                df_arr_26.append(df)
+                
+        df_25 = pd.concat(df_arr_25)
+        df_26 = pd.concat(df_arr_26)
+        
+        df_25.to_parquet('./data/parquet_preprocess/25.parquet')
+        df_26.to_parquet('./data/parquet_preprocess/26.parquet')
     
     def loadData(self):
         """
@@ -90,4 +110,6 @@ class TablePreprocess():
             df['utm_id'] = df.apply(
                 lambda x: utmIdFromQuery(x.url_query), axis=1)
             df.to_parquet(file_name)
-            print(df)
+        
+        self.concatDataFrames()
+        
