@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 from urllib import parse
+import pyarrow
+import pyarrow.parquet as pq
+import os
 
 class TablePreprocess():
     """
@@ -31,23 +34,40 @@ class TablePreprocess():
         Function for concat data frames with each other
         by date parameter
         """
-        df_arr_25 = []
-        df_arr_26 = []
-        for file_name in self.file_arr:
+        for i, file_name in enumerate(self.file_arr):
             if file_name.find('2024-06-25')!=-1:
-                df = pd.read_parquet(file_name)
-                df_arr_25.append(df)
+                os.rename(file_name, './data/parquet/25/'+str(i))
             elif file_name.find('2024-06-26')!=-1:
-                df = pd.read_parquet(file_name)
-                df_arr_26.append(df)
-                
-        df_25 = pd.concat(df_arr_25)
-        df_26 = pd.concat(df_arr_26)
-        
-        df_25.to_parquet('./data/parquet_preprocess/25.parquet')
-        df_26.to_parquet('./data/parquet_preprocess/26.parquet')
+                os.rename(file_name, './data/parquet/26/'+str(i))
+        self.combine_parquet_files('./data/parquet/25/', 
+                                   './data/parquet_preprocess/25.parquet')
+        self.combine_parquet_files('./data/parquet/26/', 
+                                   './data/parquet_preprocess/26.parquet')
     
-    def loadData(self):
+    def combine_parquet_files(self, input_folder, target_path):
+        """
+        Function for combine parquet files together
+        
+        Source:
+            https://gist.github.com/l1x/76dab6445b6d55396c622f915c755a17
+        """
+        try:
+            files = []
+            for file_name in os.listdir(input_folder):
+                files.append(pq.read_table(os.path.join(input_folder, file_name)))
+            with pq.ParquetWriter(target_path,
+                    files[0].schema,
+                    version='2.6',
+                    compression='gzip',
+                    use_dictionary=True,
+                    data_page_size=2097152,
+                    write_statistics=True) as writer:
+                for f in files:
+                    writer.write_table(f)
+        except Exception as e:
+            print(e)
+    
+    def loadData(self, file_name:str):
         """
         Function for load data from parquet files
         """
@@ -91,25 +111,26 @@ class TablePreprocess():
             except KeyError:
                 pass
             
-        for file_name in self.file_arr:
-            df = pd.read_parquet(file_name)
-            df['ga4lab'] = df['ga4lab'].map(lambda x: parse.unquote(x), na_action='ignore')
-            df['page_location'] = df['page_location'].map(lambda x: parse.unquote(x), na_action='ignore')
-            df['url_query'] = df.apply(
-                    lambda x: utmFromURL(x.page_location), axis=1)
-            df['utm_source'] = df.apply(
-                lambda x: utmSourceFromQuery(x.url_query), axis=1)
-            df['utm_medium'] = df.apply(
-                lambda x: utmMediumFromQuery(x.url_query), axis=1)
-            df['utm_campaign'] = df.apply(
-                lambda x: utmCampaignFromQuery(x.url_query), axis=1)
-            df['utm_content'] = df.apply(
-                lambda x: utmContentFromQuery(x.url_query), axis=1)
-            df['utm_term'] = df.apply(
-                lambda x: utmTermFromQuery(x.url_query), axis=1)
-            df['utm_id'] = df.apply(
-                lambda x: utmIdFromQuery(x.url_query), axis=1)
+        df = pd.read_parquet(file_name)
+        df['ga4lab'] = df['ga4lab'].map(lambda x: parse.unquote(x), na_action='ignore')
+        df['page_location'] = df['page_location'].map(lambda x: parse.unquote(x), na_action='ignore')
+        df['url_query'] = df.apply(
+            lambda x: utmFromURL(x.page_location), axis=1)
+        df['utm_source'] = df.apply(
+            lambda x: utmSourceFromQuery(x.url_query), axis=1)
+        df['utm_medium'] = df.apply(
+            lambda x: utmMediumFromQuery(x.url_query), axis=1)
+        df['utm_campaign'] = df.apply(
+            lambda x: utmCampaignFromQuery(x.url_query), axis=1)
+        df['utm_content'] = df.apply(
+            lambda x: utmContentFromQuery(x.url_query), axis=1)
+        df['utm_term'] = df.apply(
+            lambda x: utmTermFromQuery(x.url_query), axis=1)
+        df['utm_id'] = df.apply(
+            lambda x: utmIdFromQuery(x.url_query), axis=1)
+        try:
             df.to_parquet(file_name)
-        
-        self.concatDataFrames()
+        except pyarrow.lib.ArrowNotImplementedError:
+            df['url_query']=np.nan
+            df.to_parquet(file_name)
         

@@ -1,5 +1,6 @@
 from download import FileDownloader
 from tablePreprocess import TablePreprocess
+from multiprocessing import Pool
 
 url_arr = ['https://storage.yandexcloud.net/e.tarasov/for-midle/2024-06-25_0.csv',
            'https://storage.yandexcloud.net/e.tarasov/for-midle/2024-06-25_1118258.csv',
@@ -29,4 +30,7 @@ if __name__ == '__main__':
     #fd = FileDownloader(url_arr)
     #fd.download()
     tp = TablePreprocess(url_arr)
-    tp.loadData()
+    #file_arr = tp.filenameFromURL(url_arr)
+    #for i in file_arr:
+    #    tp.loadData(i)
+    tp.concatDataFrames()
